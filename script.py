@@ -1,3 +1,6 @@
 from deepface import DeepFace
-result  = DeepFace.verify("probe/00002_940422_fa.png", "reference/00002_940928_fa.png", distance_metric="euclidean")
+
+backends = ['opencv', 'ssd', 'dlib', 'mtcnn', 'retinaface']
+
+result  = DeepFace.verify("reference/00424_940422_fa.png", "output/00424_940422_fa.png", detector_backend = backends[1])
 print("Is verified: ", result)

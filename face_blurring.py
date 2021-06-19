@@ -6,18 +6,33 @@ import random
 import face_recognition
 
 files_to_alter = os.listdir("reference")
-use_radius_filter = True
-print_roi_rect = True
+
+"""
+	0: Radius based filters
+	1: Salt and pepper filter
+	2: Black eye bars filter
+"""
+filter_selector = 2
+
+print_roi_rect = False
+save_image = False
+show_image = True
 
 """
 	0: Mean filter
-	1: Median filter
+	1: Median filter <- Use this one
 """
 filter_type = 1
-filter_radius = 10
 
-for i in files_to_alter:
-	image = face_recognition.load_image_file("reference/{}".format(i))
+"""
+	high value: 20
+	med value: 10
+	low value: 5
+"""
+filter_radius = 20	# Calculate number of boxes hor and ver on the face
+
+for image_name in files_to_alter:
+	image = face_recognition.load_image_file("reference/{}".format(image_name))
 	face_landmarks = face_recognition.face_landmarks(image)
 	face_locations = face_recognition.face_locations(image)
 	# print(face_landmarks[0])
@@ -32,7 +47,7 @@ for i in files_to_alter:
 	# print(pixels_in_image)
 
 	"""filters with radius"""
-	if use_radius_filter:
+	if filter_selector == 0:
 		# TODO: find ceiling function
 		for i in range(int(columns / (filter_radius * 2)) + 1):
 			for j in range(int(rows / (filter_radius * 2)) + 1):
@@ -87,7 +102,7 @@ for i in files_to_alter:
 					g = np.median(g)
 					b = np.median(b)
 					image[min_y:max_y, min_x:max_x] = [r, g, b]
-	else:
+	elif filter_selector == 1:
 		"""Filters without radius"""
 		for i in range(columns):
 			for j in range(rows):
@@ -103,10 +118,18 @@ for i in files_to_alter:
 					else:
 						image[y,x] = [0, 0, 0]
 
+	elif filter_selector == 2:
+		pass
 
 
-	cv2.imshow('frame', image)
-	cv2.waitKey(0)
+
+	# Image saving and displaying
+	if show_image:
+		cv2.imshow('frame', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+		cv2.waitKey(0)
+	
+	if save_image:
+		cv2.imwrite("output/SP_low/{}".format(image_name), cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
 	exit()
 
 
