@@ -4,19 +4,23 @@ import numpy as np
 import random
 
 import face_recognition
+from numpy.core.numeric import Inf
 
 files_to_alter = os.listdir("reference")
+
+# Folder to put anonymised files into
+out_folder = "output/pixelation_high"
 
 """
 	0: Radius based filters
 	1: Salt and pepper filter
 	2: Black eye bars filter
 """
-filter_selector = 2
+filter_selector = 0
 
 print_roi_rect = False
-save_image = False
-show_image = True
+save_image = True
+show_image = False
 
 """
 	0: Mean filter
@@ -25,26 +29,47 @@ show_image = True
 filter_type = 1
 
 """
-	high value: 20
-	med value: 10
+	high value: 13
+	med value: 9
 	low value: 5
 """
-filter_radius = 20	# Calculate number of boxes hor and ver on the face
+filter_radius = 13	# Calculate number of boxes hor and ver on the face
+
+
+# Offset for black bar filter
+"""
+	low: x=0, y=0
+	high: x=40, y=35
+"""
+x_offset = 40
+y_offset = 35
 
 for image_name in files_to_alter:
 	image = face_recognition.load_image_file("reference/{}".format(image_name))
 	face_landmarks = face_recognition.face_landmarks(image)
 	face_locations = face_recognition.face_locations(image)
-	# print(face_landmarks[0])
 
-	for (top, right, bottom, left) in face_locations:
-		if print_roi_rect:
-			cv2.rectangle(image, (left, top), (right, bottom), (255, 0, 0), 5)
+	# Only keep largest ROI
+	area = 0
+	landmark_index = 0
+	counter = -1 # Start at -1 so it can be incremented at the start of the loop
+	for (t, r, b, l) in face_locations:
+		counter += 1
+		tmp_area = (b - t) * (r - l)
+		if tmp_area > area:
+			landmark_index = counter
+			area = tmp_area
+			top = t
+			right = r - 50
+			bottom = b - 100
+			left = l + 50
+
+	if print_roi_rect:
+		cv2.rectangle(image, (left, top), (right, bottom), (255, 0, 0), 5)
 	
 	rows = bottom - top
 	columns = right - left
 	pixels_in_image = rows * columns
-	# print(pixels_in_image)
 
 	"""filters with radius"""
 	if filter_selector == 0:
@@ -119,7 +144,23 @@ for image_name in files_to_alter:
 						image[y,x] = [0, 0, 0]
 
 	elif filter_selector == 2:
-		pass
+		left_eye = face_landmarks[landmark_index]["left_eye"]
+		right_eye = face_landmarks[landmark_index]["right_eye"]
+		combined = left_eye + right_eye
+
+		left_max, right_max, top_max, bottom_max = (Inf,-Inf,Inf,-Inf)
+
+		for (x,y) in combined:
+			if x < left_max:
+				left_max = x
+			if x > right_max:
+				right_max = x
+			if y < top_max:
+				top_max = y
+			if y > bottom_max:
+				bottom_max = y
+		
+		cv2.rectangle(image, (left_max-x_offset, top_max-y_offset), (right_max+x_offset, bottom_max+y_offset), (0, 0, 0), -1)
 
 
 
@@ -129,8 +170,7 @@ for image_name in files_to_alter:
 		cv2.waitKey(0)
 	
 	if save_image:
-		cv2.imwrite("output/SP_low/{}".format(image_name), cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-	exit()
+		cv2.imwrite("{}/{}".format(out_folder, image_name), cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
 
 
 
